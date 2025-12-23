@@ -59,14 +59,16 @@ public class EmailServiceImpl implements EmailService {
     private void sendTemplatedEmail(String to, String subject, String body) {
 
         try {
-            String jsonPayload = """
-            {
-              "from": "%s",
-              "to": ["%s"],
-              "subject": "%s",
-              "text": "%s"
-            }
-            """.formatted(fromEmail, to, subject, body.replace("\"", "\\\""));
+            ObjectMapper mapper = new ObjectMapper();
+
+            Map<String, Object> payload = Map.of(
+              "from", fromEmail,
+              "to", List.of(to),
+              "subject", subject,
+              "text", body
+            );
+
+            String jsonPayload = mapper.writeValueAsString(payload);
 
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
