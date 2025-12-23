@@ -1,11 +1,14 @@
 package com.docusign.service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Random;
 
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -16,15 +19,22 @@ import com.docusign.repository.EmailRepo;
 
 import lombok.RequiredArgsConstructor;
 
-
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
     private final EmailRepo emailRepo;
-    private final JavaMailSender mailSender;
-    
+
     private static final String DOCUMENT = "Document";
+
+    @Value("${resend.api.key}")
+    private String resendApiKey;
+
+    @Value("${resend.from.email}")
+    private String fromEmail;
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+
 
     @Override
     public String generateAndSendOtp(String email) {
@@ -34,42 +44,65 @@ public class EmailServiceImpl implements EmailService {
         EmailQueue otp = new EmailQueue();
         otp.setEmail(email);
         otp.setOtp(otpCode);
-        otp.setExpiresAt(LocalDateTime.now().plusMinutes(5)); // valid for 5 minutes
+        otp.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         otp.setUsed(false);
         otp.setSubject(EmailTemplates.OTP_SUBJECT);
         emailRepo.save(otp);
         otp.setId(otp.get_id());
         emailRepo.save(otp);
 
-        sendTemplatedEmail(email, EmailTemplates.OTP_SUBJECT, EmailTemplates.OTP_BODY_TEMPLATE, otpCode);
+        sendTemplatedEmail(email, EmailTemplates.OTP_SUBJECT, String.format(EmailTemplates.OTP_BODY_TEMPLATE, otpCode));
 
         return otpCode;
     }
 
-    private void sendTemplatedEmail(String to, String subject, String bodyTemplate, Object... args) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
+    private void sendTemplatedEmail(String to, String subject, String body) {
 
-        String body = String.format(bodyTemplate, args);
-        message.setText(body);
+        try {
+            String jsonPayload = """
+            {
+              "from": "%s",
+              "to": ["%s"],
+              "subject": "%s",
+              "text": "%s"
+            }
+            """.formatted(fromEmail, to, subject, body.replace("\"", "\\\""));
 
-        mailSender.send(message);
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.resend.com/emails"))
+                .header("Authorization", "Bearer " + resendApiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+            HttpResponse<String> response =
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 300) {
+                throw new RuntimeException("Resend email failed: " + response.body());
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send email to " + to, e);
+        }
     }
-    
+
     @Override
     public boolean verifyOtp(String email, String otpCode) {
-        Optional<EmailQueue> otpOptional = emailRepo.findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email);
+
+        Optional<EmailQueue> otpOptional =
+            emailRepo.findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email);
 
         if (otpOptional.isEmpty()) return false;
 
-        EmailQueue otp = otpOptional.get();	
+        EmailQueue otp = otpOptional.get();
 
         if (otp.getExpiresAt().isBefore(LocalDateTime.now())) return false;
         if (!otp.getOtp().equals(otpCode)) return false;
 
         otp.setUsed(true);
         emailRepo.save(otp);
+
         return true;
     }
 
@@ -82,7 +115,7 @@ public class EmailServiceImpl implements EmailService {
         });
         System.out.println("Expired OTPs cleaned up at " + LocalDateTime.now());
     }
-    
+
 
 
     @Override
@@ -95,37 +128,48 @@ public class EmailServiceImpl implements EmailService {
         emailRepo.save(emailQueue);
         emailQueue.setId(emailQueue.get_id());
         emailRepo.save(emailQueue);
-        
+
         sendTemplatedEmail(
-        		user.getEmail(),
-                EmailTemplates.USER_CREATION_SUBJECT,
+            user.getEmail(),
+            EmailTemplates.USER_CREATION_SUBJECT,
+            String.format(
                 EmailTemplates.USER_CREATION_BODY_TEMPLATE,
-                user.getFirstName()+ " "+ user.getLastName(), user.getUserName(), password
-            );
-
-    }
-
-    @Override
-    public void sendDocumentCompletionEmail(String email, String userName, String documentTitle, String completionLink) {
-        sendTemplatedEmail(
-            email,
-            EmailTemplates.DOCUMENT_COMPLETION_SUBJECT,
-            EmailTemplates.DOCUMENT_COMPLETION_BODY_TEMPLATE,
-            userName != null ? userName : "User",
-            documentTitle != null ? documentTitle : DOCUMENT,
-            completionLink
+                user.getFirstName() + " " + user.getLastName(),
+                user.getUserName(),
+                password
+            )
         );
     }
 
     @Override
-    public void sendFinalDocumentEmail(String email, String userName, String documentTitle, String finalLink) {
+    public void sendDocumentCompletionEmail(
+            String email, String userName, String documentTitle, String completionLink) {
+
+        sendTemplatedEmail(
+            email,
+            EmailTemplates.DOCUMENT_COMPLETION_SUBJECT,
+            String.format(
+                EmailTemplates.DOCUMENT_COMPLETION_BODY_TEMPLATE,
+                userName != null ? userName : "User",
+                documentTitle != null ? documentTitle : DOCUMENT,
+                completionLink
+            )
+        );
+    }
+
+    @Override
+    public void sendFinalDocumentEmail(
+            String email, String userName, String documentTitle, String finalLink) {
+
         sendTemplatedEmail(
             email,
             "Document Completed: " + (documentTitle != null ? documentTitle : DOCUMENT),
-            "Hello %s,\n\nThe document '%s' has been signed by all parties.\n\nYou can view the final completed document here:\n%s\n\nThank you,\nDocuSign Clone Team",
-            userName != null ? userName : "User",
-            documentTitle != null ? documentTitle : DOCUMENT,
-            finalLink
+            String.format(
+                "Hello %s,\n\nThe document '%s' has been signed by all parties.\n\nView final document:\n%s\n\nThanks,\nDocuSign Clone Team",
+                userName != null ? userName : "User",
+                documentTitle != null ? documentTitle : DOCUMENT,
+                finalLink
+            )
         );
     }
 }
