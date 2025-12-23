@@ -5,6 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
@@ -16,6 +18,7 @@ import com.docusign.constants.EmailTemplates;
 import com.docusign.entity.EmailQueue;
 import com.docusign.entity.User;
 import com.docusign.repository.EmailRepo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
