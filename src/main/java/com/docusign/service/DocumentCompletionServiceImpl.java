@@ -81,7 +81,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
                         completionLink
                 );
             } catch (Exception e) {
-                log.error("Failed to send completion email to {}: {}", email, e);
+                log.error("Failed to send completion email to {}: ", email, e);
                 throw new RuntimeException(
                         "Failed to send email to " + email,
                         e
@@ -145,7 +145,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         try {
             s3Service.copyObject(originalKey, captureKey);
         } catch (Exception e) {
-            log.error("Failed to copy document from {} to {}: {}", originalKey, captureKey, e);
+            log.error("Failed to copy document from {} to {}: ", originalKey, captureKey, e);
             throw new RuntimeException(
                     "Failed to copy document to capture-docs",
                     e
@@ -204,7 +204,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
                             finalLink
                     );
                 } catch (Exception e) {
-                    log.error("Failed to send final email to {}: {}", email, e);
+                    log.error("Failed to send final email to {}: ", email, e);
                     System.err.println(
                             "Failed to send final email to " + email
                     );
@@ -254,7 +254,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         try {
             viewUrl = s3Service.generatePresignedGetUrl(designer.getS3Key());
         } catch (Exception e) {
-            log.error("Failed to generate presigned URL for key {}: {}", designer.getS3Key(), e);
+            log.error("Failed to generate presigned URL for key {}: ", designer.getS3Key(), e);
             throw new RuntimeException(
                     "Failed to generate document URL",
                     e

@@ -70,7 +70,7 @@ public class DesignerController {
         	Map<String, String> map = designerService.getViewUrl(id); 
         	return ResponseEntity.ok(map);
         }catch(Exception e) {
-            log.error("Failed to get view URL for designer {}: {}", id, e);
+            log.error("Failed to get view URL for designer {}: ", id, e);
         	return ResponseEntity.badRequest().body(Map.of("error", "No document uploaded for this designer"));
         }
     }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.docusign.entity.DocumentCompletion;
 import com.docusign.entity.User;
 import com.docusign.repository.UserRepo;
 import com.docusign.security.JwtService;
@@ -66,7 +67,7 @@ public class DocumentController {
                     "captureKey", captureKey
             ));
         } catch (Exception e) {
-            log.error("Error submitting document {}: {}", id, e);
+            log.error("Error submitting document {}: ", id, e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
@@ -82,7 +83,7 @@ public class DocumentController {
             String currentUserId = (String) response.get("currentUserId");
             
             // Refetch completion to check isExternal status saved in DB
-            var completion = completionService.getCompletionByToken(doctoken);
+            DocumentCompletion completion = completionService.getCompletionByToken(doctoken);
             
             String token = null;
             if (completion.isExternal()) {
@@ -99,7 +100,7 @@ public class DocumentController {
                     .body(Map.of("token", token, "response", response));
 
         } catch (Exception e) {
-            log.error("Failed to fetch document for token {}: {}", doctoken, e);
+            log.error("Failed to fetch document for token {}: ", doctoken, e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }

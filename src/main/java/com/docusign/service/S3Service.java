@@ -108,7 +108,7 @@ public class S3Service {
             s3Client.copyObject(copyRequest);
             log.info("Successfully copied S3 object from {} to {}", sourceKey, destinationKey);
         } catch (Exception e) {
-            log.error("Failed to copy S3 object from {} to {}: {}", sourceKey, destinationKey, e);
+            log.error("Failed to copy S3 object from {} to {}: ", sourceKey, destinationKey, e);
             throw e;
         }
     }
