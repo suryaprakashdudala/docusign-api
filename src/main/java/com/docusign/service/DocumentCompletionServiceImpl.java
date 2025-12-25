@@ -272,6 +272,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         response.put("currentUserId", completion.getUserId());
         response.put("token", token);
         response.put("viewUrl", viewUrl);
+        response.put("consolidatedData", getConsolidatedValues(designer.getId()));
 
         return response;
     }
@@ -289,7 +290,11 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
 
         for (DocumentCompletion dc : completions) {
             if (dc.getFieldValues() != null) {
-                merged.putAll(dc.getFieldValues());
+                dc.getFieldValues().forEach((key, value) -> {
+                    if (value != null && !(value instanceof String && ((String) value).trim().isEmpty())) {
+                        merged.put(key, value);
+                    }
+                });
             }
         }
         return merged;
