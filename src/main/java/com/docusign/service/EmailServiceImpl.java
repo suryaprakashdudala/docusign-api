@@ -21,9 +21,11 @@ import com.docusign.repository.EmailRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailServiceImpl implements EmailService {
 
     private final EmailRepo emailRepo;
@@ -84,10 +86,13 @@ public class EmailServiceImpl implements EmailService {
                 httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 300) {
+                log.error("Resend API returned error for {}: {}", to, response.body());
                 throw new RuntimeException("Resend email failed: " + response.body());
             }
+            log.info("Email sent successfully to {} via Resend", to);
 
         } catch (Exception e) {
+            log.error("Failed to send email to {}: {}", to, e);
             throw new RuntimeException("Failed to send email to " + to, e);
         }
     }

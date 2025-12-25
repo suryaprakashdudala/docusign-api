@@ -21,10 +21,12 @@ import com.docusign.service.EmailService;
 import com.docusign.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/designers")
 @RequiredArgsConstructor
+@Slf4j
 public class DesignerController {
 
 
@@ -68,6 +70,7 @@ public class DesignerController {
         	Map<String, String> map = designerService.getViewUrl(id); 
         	return ResponseEntity.ok(map);
         }catch(Exception e) {
+            log.error("Failed to get view URL for designer {}: {}", id, e);
         	return ResponseEntity.badRequest().body(Map.of("error", "No document uploaded for this designer"));
         }
     }

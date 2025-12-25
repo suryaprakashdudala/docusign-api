@@ -14,9 +14,11 @@ import com.docusign.entity.User;
 import com.docusign.security.JwtService;
 import com.docusign.service.EmailService;
 import com.docusign.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     private final UserService userService;
@@ -40,9 +42,11 @@ public class AuthController {
         Optional<User> user = userService.validateUser(body.get("userName"), body.get("password"));
         if (user.isPresent()) {
             String token = jwtService.generateToken(user.get());
+            log.info("User {} logged in successfully", user.get().getUserName());
             return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer "+token)
             		.body(Map.of("token", token, "user", user.get(), "message", "Login Successful"));
         }
+        log.warn("Login attempt failed for user {}", body.get("userName"));
         return ResponseEntity.status(401).body("Invalid credentials");
     }
     

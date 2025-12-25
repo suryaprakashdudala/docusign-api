@@ -18,8 +18,10 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class S3Service {
 
     private final S3Presigner presigner;
@@ -94,14 +96,20 @@ public class S3Service {
     }
 
     public void copyObject(String sourceKey, String destinationKey) {
-        // Copy object from source to destination within the same bucket
-        CopyObjectRequest copyRequest = CopyObjectRequest.builder()
-                .sourceBucket(bucket)
-                .sourceKey(sourceKey)
-                .destinationBucket(bucket)
-                .destinationKey(destinationKey)
-                .build();
-        
-        s3Client.copyObject(copyRequest);
+        try {
+            // Copy object from source to destination within the same bucket
+            CopyObjectRequest copyRequest = CopyObjectRequest.builder()
+                    .sourceBucket(bucket)
+                    .sourceKey(sourceKey)
+                    .destinationBucket(bucket)
+                    .destinationKey(destinationKey)
+                    .build();
+            
+            s3Client.copyObject(copyRequest);
+            log.info("Successfully copied S3 object from {} to {}", sourceKey, destinationKey);
+        } catch (Exception e) {
+            log.error("Failed to copy S3 object from {} to {}: {}", sourceKey, destinationKey, e);
+            throw e;
+        }
     }
 }

@@ -20,10 +20,12 @@ import com.docusign.security.JwtService;
 import com.docusign.service.DocumentCompletionService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
+@Slf4j
 public class DocumentController {
 
     private final DocumentCompletionService completionService;
@@ -44,43 +46,60 @@ public class DocumentController {
         String userId = (String) body.get("userId");
 
         if (token == null || userId == null) {
+            log.warn("Submission failed for designer {}: Token or userId missing", id);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Token and userId are required"));
         }
 
-        String captureKey =
-                completionService.saveCompletedDocument(
-                        id,
-                        userId,
-                        fieldValues,
-                        token
-                );
+        try {
+            String captureKey =
+                    completionService.saveCompletedDocument(
+                            id,
+                            userId,
+                            fieldValues,
+                            token
+                    );
 
-        return ResponseEntity.ok(Map.of(
-                "message", "Document submitted successfully",
-                "captureKey", captureKey
-        ));
+            log.info("Document {} submitted successfully by user {}", id, userId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Document submitted successfully",
+                    "captureKey", captureKey
+            ));
+        } catch (Exception e) {
+            log.error("Error submitting document {}: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
     // Get document for completion
     @GetMapping("/complete/{doctoken}")
-    public ResponseEntity<Map<String, Object>> getDocumentByToken(@PathVariable String doctoken, @RequestParam(name="isExternal", required = false) boolean isExternal) {
+    public ResponseEntity<Map<String, Object>> getDocumentByToken(@PathVariable String doctoken) {
         try {
-        	
             Map<String, Object> response =
                     completionService.getDocumentForCompletion(doctoken);
 
-       	 String token = null;
-       	 if(isExternal) {
-   			 token = jwtService.generateTokenForExternalUser((String) response.get("currentUserId")); 
-       	 }else {
-       		 User louser = userRepo.findById((String) response.get("currentUserId")).orElseThrow(() -> new UsernameNotFoundException("User not found "));
-   			 token = jwtService.generateToken(louser);
-       		 
-       	 }
-            return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer "+token).body(Map.of("token", token, "response", response));
+            String currentUserId = (String) response.get("currentUserId");
+            
+            // Refetch completion to check isExternal status saved in DB
+            var completion = completionService.getCompletionByToken(doctoken);
+            
+            String token = null;
+            if (completion.isExternal()) {
+                token = jwtService.generateTokenForExternalUser(currentUserId);
+            } else {
+                User louser = userRepo.findById(currentUserId)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUserId));
+                token = jwtService.generateToken(louser);
+            }
+            
+            log.info("Token generated for user {} accessing document via token {}", currentUserId, doctoken);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .body(Map.of("token", token, "response", response));
 
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
+            log.error("Failed to fetch document for token {}: {}", doctoken, e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }

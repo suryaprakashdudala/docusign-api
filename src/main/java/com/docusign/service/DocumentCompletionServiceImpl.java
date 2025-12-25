@@ -16,10 +16,12 @@ import com.docusign.repository.DesignerRepo;
 import com.docusign.repository.DocumentCompletionRepo;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class DocumentCompletionServiceImpl implements DocumentCompletionService {
 
     private final DocumentCompletionRepo completionRepo;
@@ -59,7 +61,9 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
 
             DocumentCompletion completion = new DocumentCompletion();
             completion.setDesignerId(designer.getId());
-            completion.setUserId((boolean) user.get("isExternal") ? email : userId);
+            boolean isExternalUser = (boolean) user.get("isExternal");
+            completion.setUserId(isExternalUser ? email : userId);
+            completion.setExternal(isExternalUser);
             completion.setToken(token);
             completion.setStatus("pending");
             completion.setCreatedAt(Instant.now());
@@ -67,16 +71,17 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
             completionRepo.save(completion);
 
             String completionLink =
-                    frontendUrl + "/documents/complete/" + token+"?isExtrernal="+(boolean) user.get("isExternal");
+                    frontendUrl + "/documents/complete/" + token + "?isExternal=" + isExternalUser;
 
             try {
                 emailService.sendDocumentCompletionEmail(
                         email,
-                        (boolean) user.get("isExternal") ? "User" : userName.trim(),
+                        isExternalUser ? "User" : userName.trim(),
                         designer.getTitle(),
                         completionLink
                 );
             } catch (Exception e) {
+                log.error("Failed to send completion email to {}: {}", email, e);
                 throw new RuntimeException(
                         "Failed to send email to " + email,
                         e
@@ -140,6 +145,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         try {
             s3Service.copyObject(originalKey, captureKey);
         } catch (Exception e) {
+            log.error("Failed to copy document from {} to {}: {}", originalKey, captureKey, e);
             throw new RuntimeException(
                     "Failed to copy document to capture-docs",
                     e
@@ -198,6 +204,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
                             finalLink
                     );
                 } catch (Exception e) {
+                    log.error("Failed to send final email to {}: {}", email, e);
                     System.err.println(
                             "Failed to send final email to " + email
                     );
@@ -247,6 +254,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         try {
             viewUrl = s3Service.generatePresignedGetUrl(designer.getS3Key());
         } catch (Exception e) {
+            log.error("Failed to generate presigned URL for key {}: {}", designer.getS3Key(), e);
             throw new RuntimeException(
                     "Failed to generate document URL",
                     e

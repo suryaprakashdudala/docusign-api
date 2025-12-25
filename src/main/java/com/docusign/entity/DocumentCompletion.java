@@ -21,6 +21,7 @@ public class DocumentCompletion extends BaseAuditEntity {
     private String id;
     private String designerId;
     private String userId;
+    private boolean isExternal;
     private String token;
     private String status; // pending, completed
     private Map<String, Object> fieldValues;

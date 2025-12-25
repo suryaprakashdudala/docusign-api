@@ -14,9 +14,11 @@ import com.docusign.repository.DesignerRepo;
 import com.docusign.repository.UserRepo;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DesignerServiceImpl implements DesignerService {
 	
 	private final DesignerRepo designerRepo;
