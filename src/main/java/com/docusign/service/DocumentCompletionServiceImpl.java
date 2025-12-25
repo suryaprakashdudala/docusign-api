@@ -69,10 +69,10 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
             completion.setCreatedAt(Instant.now());
 
             completionRepo.save(completion);
-
+            log.info("Completion record saved in db: "+ completion);
             String completionLink =
                     frontendUrl + "/documents/complete/" + token + "?isExternal=" + isExternalUser;
-
+            log.info("CmpletionLink sent to email: "+ isExternalUser);
             try {
                 emailService.sendDocumentCompletionEmail(
                         email,
