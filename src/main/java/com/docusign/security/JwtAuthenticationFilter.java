@@ -52,7 +52,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (jwtService.isTokenValid(jwt)) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
+                    String docToken = null;
+                    try {
+                        docToken = jwtService.extractDocToken(jwt);
+                    } catch (Exception e) {
+                        // Not an external user token or docToken missing, that's fine
+                    }
+
+                    String lookupIdentifier = (docToken != null) ? userName + ":" + docToken : userName;
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(lookupIdentifier);
+                    
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

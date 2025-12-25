@@ -87,8 +87,8 @@ public class DocumentController {
             
             String token = null;
             if (completion.isExternal()) {
-                log.info("Processing External User token generation");
-                token = jwtService.generateTokenForExternalUser(currentUserId);
+                log.info("Processing External User token generation for token {}", doctoken);
+                token = jwtService.generateTokenForExternalUser(currentUserId, doctoken);
             } else {
                 log.info("Processing Internal User token generation");
                 User louser = userRepo.findById(currentUserId)

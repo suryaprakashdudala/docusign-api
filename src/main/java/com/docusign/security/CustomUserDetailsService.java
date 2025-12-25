@@ -39,7 +39,19 @@ public class CustomUserDetailsService implements UserDetailsService {
             );
         }
         
-        Optional<DocumentCompletion> externalUser = documentCompletionRepo.findByUserId(username);
+        // Handle external user lookup (potentially email:docToken)
+        String lookupEmail = username;
+        String docToken = null;
+        
+        if (username.contains(":")) {
+            String[] parts = username.split(":");
+            lookupEmail = parts[0];
+            docToken = parts[1];
+        }
+
+        Optional<DocumentCompletion> externalUser = (docToken != null) 
+            ? documentCompletionRepo.findByTokenAndUserId(docToken, lookupEmail)
+            : documentCompletionRepo.findByUserId(lookupEmail);
 
         if (externalUser.isPresent()) {
             return new org.springframework.security.core.userdetails.User(
