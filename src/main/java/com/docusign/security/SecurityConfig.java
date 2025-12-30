@@ -45,8 +45,8 @@ public class SecurityConfig {
                 .cors().and()
                 .csrf().disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/api/auth/login", "/api/auth/registerUser", "/api/auth/forgotpassword", "/api/auth/verifyotp", 
-                		"/api/auth/resetpassword", "/api/auth/updatepassword", "/api/documents/complete/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/users/registerUser", "/api/auth/forgotpassword", "/api/auth/verifyotp", 
+                		"/api/auth/resetpassword", "/api/auth/updatepassword", "/api/documents/complete/**", "/api/auth/health").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
