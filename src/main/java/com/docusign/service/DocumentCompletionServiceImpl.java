@@ -272,6 +272,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         response.put("currentUserId", completion.getUserId());
         response.put("token", token);
         response.put("viewUrl", viewUrl);
+        response.put("status", completion.getStatus());
         response.put("consolidatedData", getConsolidatedValues(designer.getId()));
 
         return response;

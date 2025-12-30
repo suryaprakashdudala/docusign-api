@@ -21,6 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthController {
 
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("Service is up and running");
+    }
+
     private final UserService userService;
     private final JwtService jwtService;
     private final EmailService emailService;
