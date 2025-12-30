@@ -31,12 +31,6 @@ public class AuthController {
         this.emailService = emailService;
     }
 
-    @PostMapping("/registerUser")
-    public ResponseEntity<?> register(@RequestBody User user) {
-        User saved = userService.register(user);
-        return ResponseEntity.ok(saved);
-    }
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         Optional<User> user = userService.validateUser(body.get("userName"), body.get("password"));
