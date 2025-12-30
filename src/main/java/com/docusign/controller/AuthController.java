@@ -23,77 +23,84 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthController {
 
-    @GetMapping("/health")
-    public ResponseEntity<String> healthCheck() {
-        return ResponseEntity.ok("Service is up and running");
-    }
 
     private final UserService userService;
     private final JwtService jwtService;
     private final EmailService emailService;
+    
+    private static final String USER_NAME = "userName";
+    private static final String PASSWORD = "password";
+    private static final String MESSAGE = "message";
+    private static final String EMAIL = "email";
+    private static final String STATUS = "status";
 
     public AuthController(UserService userService, JwtService jwtService, EmailService emailService) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.emailService = emailService;
     }
+    
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("Service is up and running");
+    }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
-        Optional<User> user = userService.validateUser(body.get("userName"), body.get("password"));
+    public ResponseEntity<Object> login(@RequestBody Map<String, String> body) {
+        Optional<User> user = userService.validateUser(body.get(USER_NAME), body.get(PASSWORD));
         if (user.isPresent()) {
             String token = jwtService.generateToken(user.get());
             log.info("User {} logged in successfully", user.get().getUserName());
             return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer "+token)
-            		.body(Map.of("token", token, "user", user.get(), "message", "Login Successful"));
+            		.body(Map.of("token", token, "user", user.get(), MESSAGE, "Login Successful"));
         }
-        log.warn("Login attempt failed for user {}", body.get("userName"));
+        log.warn("Login attempt failed for user {}", body.get(USER_NAME));
         return ResponseEntity.status(401).body("Invalid credentials");
     }
     
     @PostMapping("/forgotpassword")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
+    public ResponseEntity<Object> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get(EMAIL);
         userService.forgotPassword(email);
         return ResponseEntity.ok("OTP sent to " + email);
     }
 
     @PostMapping("/verifyotp")
-    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
+    public ResponseEntity<Object> verifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get(EMAIL);
         String otp = request.get("otp");
 
         boolean verified = emailService.verifyOtp(email, otp);
 
         if (verified) {
             return ResponseEntity.ok(Map.of(
-                "status", "success",
-                "message", "OTP verified successfully"
+                STATUS, "success",
+                MESSAGE, "OTP verified successfully"
             ));
         } else {
             return ResponseEntity.status(400).body(Map.of(
-                "status", "failed",
-                "message", "Invalid or expired OTP"
+                STATUS, "failed",
+                MESSAGE, "Invalid or expired OTP"
             ));
         }
     }
 
     @PostMapping("/resetpassword")
-    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        String password = request.get("password");
+    public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
+        String email = request.get(EMAIL);
+        String password = request.get(PASSWORD);
 
         boolean verified = userService.resetPassword(email, password);
 
         if (verified) {
             return ResponseEntity.ok(Map.of(
-                "status", "success",
-                "message", "Password reset successfully"
+                STATUS, "success",
+                MESSAGE, "Password reset successfully"
             ));
         } else {
             return ResponseEntity.status(400).body(Map.of(
-                "status", "failed",
-                "message", "Failed to reser password"
+                STATUS, "failed",
+                MESSAGE, "Failed to reset password"
             ));
         }
     }
@@ -101,16 +108,16 @@ public class AuthController {
 
 
     @PostMapping("/updatepassword")
-    public ResponseEntity<?> updatePassword(@RequestBody Map<String, String> request) {
-        String userName = request.get("userName");
-        String password = request.get("password");
+    public ResponseEntity<Object> updatePassword(@RequestBody Map<String, String> request) {
+        String userName = request.get(USER_NAME);
+        String password = request.get(PASSWORD);
 
         Optional<User> user = userService.updatePassword(userName, password);
 
         if (user.isPresent()) {
             String token = jwtService.generateToken(user.get());
             return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer "+token)
-            		.body(Map.of("token", token, "userName", user.get().getUserName(), "message", "Login Successful"));
+            		.body(Map.of("token", token, USER_NAME, user.get().getUserName(), MESSAGE, "Login Successful"));
         }
         return ResponseEntity.status(401).body("Failed to Update password");
     }

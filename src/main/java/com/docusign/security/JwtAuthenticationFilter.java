@@ -14,8 +14,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -50,14 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String jwt = authHeader.substring(7);
             final String userName = jwtService.extractUsername(jwt);
 
-            if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtService.isTokenValid(jwt)) {
+            if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null && jwtService.isTokenValid(jwt)) {
                     String docToken = null;
-                    try {
-                        docToken = jwtService.extractDocToken(jwt);
-                    } catch (Exception e) {
-                        // Not an external user token or docToken missing, that's fine
-                    }
+                    docToken = jwtService.extractDocToken(jwt);
 
                     String lookupIdentifier = (docToken != null) ? userName + ":" + docToken : userName;
                     UserDetails userDetails = userDetailsService.loadUserByUsername(lookupIdentifier);
@@ -69,11 +66,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
             }
         } catch (Exception e) {
-            // Token validation failed, continue without authentication
-            logger.error("JWT validation failed", e);
+            log.error("JWT validation failed", e);
         }
 
         filterChain.doFilter(request, response);

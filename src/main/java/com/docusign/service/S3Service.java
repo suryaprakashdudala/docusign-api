@@ -53,47 +53,41 @@ public class S3Service {
                 .build();
     }
 
-    public String generatePresignedPutUrl(String key, String contentType) {
-        // Build PutObjectRequest
-        // Note: For presigned URLs, we don't include Content-Type in the signature
-        // to avoid header mismatch issues. The Content-Type can be set by the client
-        // but won't be part of the signature validation.
-        PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(key);
-        
-        // Don't set Content-Type in the request builder - this avoids signature mismatch
-        // The client can send Content-Type header, but it won't be part of signature validation
-        // This is more flexible and avoids 403 errors from header mismatches
-        
-        PutObjectRequest putObjectRequest = requestBuilder.build();
+    public String generatePresignedPutUrl(String key) {
 
-        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
-                .putObjectRequest(putObjectRequest)
-                .signatureDuration(Duration.ofMinutes(presignMinutes))
-                .build();
+        PutObjectPresignRequest presignRequest =
+                PutObjectPresignRequest.builder()
+                        .putObjectRequest(b -> b
+                                .bucket(bucket)
+                                .key(key)
+                        )
+                        .signatureDuration(Duration.ofMinutes(presignMinutes))
+                        .build();
 
-        PresignedPutObjectRequest presigned = presigner.presignPutObject(presignRequest);
-        
+        PresignedPutObjectRequest presigned =
+                presigner.presignPutObject(presignRequest);
+
         return presigned.url().toString();
     }
+
 
     public String generatePresignedGetUrl(String key) {
-        // Generate a presigned URL for viewing/downloading files
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucket)
-                .key(key)
-                .build();
 
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .getObjectRequest(getObjectRequest)
-                .signatureDuration(Duration.ofMinutes(presignMinutes))
-                .build();
+        GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                        .getObjectRequest(b -> b
+                                .bucket(bucket)
+                                .key(key)
+                        )
+                        .signatureDuration(Duration.ofMinutes(presignMinutes))
+                        .build();
 
-        PresignedGetObjectRequest presigned = presigner.presignGetObject(presignRequest);
-        
+        PresignedGetObjectRequest presigned =
+                presigner.presignGetObject(presignRequest);
+
         return presigned.url().toString();
     }
+
 
     public void copyObject(String sourceKey, String destinationKey) {
         try {

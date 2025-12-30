@@ -33,6 +33,7 @@ public class DocumentController {
     private final JwtService jwtService;
     private final UserRepo userRepo;
 
+    private static final String ERROR = "error";
     // Submit completed document
     @PostMapping("/{id}/submit")
     public ResponseEntity<Map<String, Object>> submitDocument(
@@ -49,7 +50,7 @@ public class DocumentController {
         if (token == null || userId == null) {
             log.warn("Submission failed for designer {}: Token or userId missing", id);
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Token and userId are required"));
+                    .body(Map.of(ERROR, "Token and userId are required"));
         }
 
         try {
@@ -69,7 +70,7 @@ public class DocumentController {
         } catch (Exception e) {
             log.error("Error submitting document {}: ", id, e);
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(ERROR, e.getMessage()));
         }
     }
 
@@ -104,7 +105,7 @@ public class DocumentController {
         } catch (Exception e) {
             log.error("Failed to fetch document for token {}: ", doctoken, e);
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(ERROR, e.getMessage()));
         }
     }
 }

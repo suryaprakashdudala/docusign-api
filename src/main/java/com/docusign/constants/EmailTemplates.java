@@ -1,6 +1,10 @@
 package com.docusign.constants;
 
 public class EmailTemplates {
+	
+    private EmailTemplates() {
+        // Private constructor to prevent instantiation
+    }
 
     // OTP EMAIL
     public static final String OTP_SUBJECT = "Password Reset OTP";
@@ -50,5 +54,20 @@ public class EmailTemplates {
 
         Thank you,
         DocuSign System
+        """;
+
+    // FINAL DOCUMENT EMAIL
+    public static final String FINAL_DOCUMENT_SUBJECT = "Document Completed: %s";
+
+    public static final String FINAL_DOCUMENT_BODY_TEMPLATE = """
+        Hello %s,
+
+        The document '%s' has been signed by all parties.
+
+        View final document:
+        %s
+
+        Thanks,
+        DocuSign Clone Team
         """;
 }

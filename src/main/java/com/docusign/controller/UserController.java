@@ -30,7 +30,7 @@ public class UserController {
     }
     
     @PostMapping("/registerUser")
-    public ResponseEntity<?> register(@RequestBody User user) {
+    public ResponseEntity<User> register(@RequestBody User user) {
         User saved = userService.register(user);
         return ResponseEntity.ok(saved);
     }

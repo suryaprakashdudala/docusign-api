@@ -10,8 +10,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.docusign.constants.AppConstants;
+import com.docusign.dto.UserEmailContext;
 import com.docusign.entity.Designer;
 import com.docusign.entity.DocumentCompletion;
+import com.docusign.exception.ResourceNotFoundException;
 import com.docusign.repository.DesignerRepo;
 import com.docusign.repository.DocumentCompletionRepo;
 
@@ -33,62 +36,100 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
     private String frontendUrl;
 
     // -------------------------------------------------------------------------
-    // Send completion emails
+    // Send completion email
     // -------------------------------------------------------------------------
     @Override
     public void sendCompletionEmails(Designer designer, List<Map<String, Object>> users) {
 
         for (Map<String, Object> user : users) {
+            UserEmailContext context = buildUserContext(user);
 
-            String userId = (String) user.get("userId");
-            String email = (String) user.get("email");
-            String firstName = (String) user.get("firstName");
-            String lastName = (String) user.get("lastName");
+            validateEmail(context);
 
-            String userName =
-                    (firstName != null ? firstName : "") + " " +
-                    (lastName != null ? lastName : "");
-
-            if (email == null || email.trim().isEmpty()) {
-                throw new RuntimeException(
-                        "User " +
-                        (userName.trim().isEmpty() ? userId : userName.trim()) +
-                        " does not have an email address"
-                );
-            }
-
-            String token = UUID.randomUUID().toString();
-
-            DocumentCompletion completion = new DocumentCompletion();
-            completion.setDesignerId(designer.getId());
-            boolean isExternalUser = (boolean) user.get("isExternal");
-            completion.setUserId(isExternalUser ? email : userId);
-            completion.setExternal(isExternalUser);
-            completion.setToken(token);
-            completion.setStatus("pending");
-            completion.setCreatedAt(Instant.now());
+            DocumentCompletion completion =
+                    createCompletionRecord(designer, context);
 
             completionRepo.save(completion);
-            log.info("Completion record saved in db: "+ completion);
-            String completionLink =
-                    frontendUrl + "/documents/complete/" + token + "?isExternal=" + isExternalUser;
-            log.info("CmpletionLink sent to email: "+ isExternalUser);
-            try {
-                emailService.sendDocumentCompletionEmail(
-                        email,
-                        isExternalUser ? "User" : userName.trim(),
-                        designer.getTitle(),
-                        completionLink
-                );
-            } catch (Exception e) {
-                log.error("Failed to send completion email to {}: ", email, e);
-                throw new RuntimeException(
-                        "Failed to send email to " + email,
-                        e
-                );
-            }
+            log.info("Completion record saved in db: {}", completion);
+
+            String completionLink = buildCompletionLink(completion);
+
+            sendCompletionEmailSafely(designer, context, completionLink);
         }
     }
+    
+    private UserEmailContext buildUserContext(Map<String, Object> user) {
+
+        String userId = (String) user.get("userId");
+        String email = (String) user.get("email");
+        String firstName = (String) user.get("firstName");
+        String lastName = (String) user.get("lastName");
+        boolean isExternal = (boolean) user.get("isExternal");
+
+        String userName =
+                (firstName != null ? firstName : "") + " " +
+                (lastName != null ? lastName : "");
+
+        return new UserEmailContext(userId, email, userName.trim(), isExternal);
+    }
+    
+    private void validateEmail(UserEmailContext context) {
+
+        if (context.email() == null || context.email().isBlank()) {
+            throw new ResourceNotFoundException(
+                "User " +
+                (context.userName().isEmpty() ? context.userId() : context.userName()) +
+                " does not have an email address"
+            );
+        }
+    }
+
+    
+    private DocumentCompletion createCompletionRecord(
+            Designer designer,
+            UserEmailContext context) {
+
+        DocumentCompletion completion = new DocumentCompletion();
+
+        completion.setDesignerId(designer.getId());
+        completion.setUserId(context.isExternal() ? context.email() : context.userId());
+        completion.setExternal(context.isExternal());
+        completion.setToken(UUID.randomUUID().toString());
+        completion.setStatus(AppConstants.STATUS_PENDING);
+        completion.setCreatedAt(Instant.now());
+
+        return completion;
+    }
+    
+    private String buildCompletionLink(DocumentCompletion completion) {
+        return frontendUrl + "/documents/complete/" +
+               completion.getToken() +
+               "?isExternal=" + completion.isExternal();
+    }
+
+    private void sendCompletionEmailSafely(
+            Designer designer,
+            UserEmailContext context,
+            String completionLink) {
+
+        try {
+            emailService.sendDocumentCompletionEmail(
+                context.email(),
+                context.isExternal() ? "User" : context.userName(),
+                designer.getTitle(),
+                completionLink
+            );
+        } catch (Exception e) {
+            log.error("Failed to send completion email to {}", context.email(), e);
+            throw new ResourceNotFoundException(
+                "Failed to send email to " + context.email() + " "+ e
+            );
+        }
+    }
+
+
+
+
 
     // -------------------------------------------------------------------------
     // Save completed document (controller passes designerId only)
@@ -102,7 +143,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
     ) {
         Designer designer = designerRepo.findById(designerId)
                 .orElseThrow(() ->
-                        new RuntimeException("Designer not found")
+                        new ResourceNotFoundException("Designer not found")
                 );
 
         return saveCompletedDocument(designer, userId, fieldValues, token);
@@ -120,16 +161,16 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         DocumentCompletion completion =
                 completionRepo.findByTokenAndUserId(token, userId)
                         .orElseThrow(() ->
-                                new RuntimeException("Invalid completion token")
+                                new ResourceNotFoundException("Invalid completion token")
                         );
 
         if (!completion.getDesignerId().equals(designer.getId())) {
-            throw new RuntimeException("Token does not match designer");
+            throw new ResourceNotFoundException("Token does not match designer");
         }
 
         String originalKey = designer.getS3Key();
         if (originalKey == null || originalKey.isEmpty()) {
-            throw new RuntimeException("Designer document not found");
+            throw new ResourceNotFoundException("Designer document not found");
         }
 
         String filename =
@@ -146,7 +187,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
             s3Service.copyObject(originalKey, captureKey);
         } catch (Exception e) {
             log.error("Failed to copy document from {} to {}: ", originalKey, captureKey, e);
-            throw new RuntimeException(
+            throw new InternalError(
                     "Failed to copy document to capture-docs",
                     e
             );
@@ -154,7 +195,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
 
         completion.setFieldValues(fieldValues);
         completion.setCaptureKey(captureKey);
-        completion.setStatus("completed");
+        completion.setStatus(AppConstants.STATUS_COMPLETED);
         completion.setCompletedAt(Instant.now());
 
         completionRepo.save(completion);
@@ -177,14 +218,14 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         long completedCount =
                 completionRepo.countByDesignerIdAndStatus(
                         designer.getId(),
-                        "completed"
+                        AppConstants.STATUS_COMPLETED
                 );
 
         if (completedCount < recipients.size()) {
             return;
         }
 
-        designer.setStatus("completed");
+        designer.setStatus(AppConstants.STATUS_COMPLETED);
         designerRepo.save(designer);
 
         String finalLink =
@@ -205,9 +246,6 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
                     );
                 } catch (Exception e) {
                     log.error("Failed to send final email to {}: ", email, e);
-                    System.err.println(
-                            "Failed to send final email to " + email
-                    );
                 }
             }
         }
@@ -220,12 +258,12 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
     public DocumentCompletion getCompletionByToken(String token) {
 
         if (token == null || token.trim().isEmpty()) {
-            throw new RuntimeException("Token is required");
+            throw new ResourceNotFoundException("Token not found");
         }
 
         return completionRepo.findByToken(token)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Invalid or expired completion token"
                         )
                 );
@@ -241,11 +279,11 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
 
         Designer designer = designerRepo.findById(completion.getDesignerId())
                 .orElseThrow(() ->
-                        new RuntimeException("Designer not found for token")
+                        new ResourceNotFoundException("Designer not found for token")
                 );
 
         if (designer.getS3Key() == null || designer.getS3Key().isEmpty()) {
-            throw new RuntimeException(
+            throw new ResourceNotFoundException(
                     "Document not found. The document may not have been uploaded."
             );
         }
@@ -255,7 +293,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
             viewUrl = s3Service.generatePresignedGetUrl(designer.getS3Key());
         } catch (Exception e) {
             log.error("Failed to generate presigned URL for key {}: ", designer.getS3Key(), e);
-            throw new RuntimeException(
+            throw new InternalError(
                     "Failed to generate document URL",
                     e
             );
@@ -292,7 +330,8 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         for (DocumentCompletion dc : completions) {
             if (dc.getFieldValues() != null) {
                 dc.getFieldValues().forEach((key, value) -> {
-                    if (value != null && !(value instanceof String && ((String) value).trim().isEmpty())) {
+                    if (value != null &&
+                        !(value instanceof String str && str.trim().isEmpty())) {
                         merged.put(key, value);
                     }
                 });
@@ -300,4 +339,5 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
         }
         return merged;
     }
+
 }

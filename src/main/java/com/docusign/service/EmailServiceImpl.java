@@ -3,12 +3,11 @@ package com.docusign.service;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,19 +31,20 @@ public class EmailServiceImpl implements EmailService {
 
     private static final String DOCUMENT = "Document";
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @Value("${resend.api.key}")
     private String resendApiKey;
 
     @Value("${resend.from.email}")
     private String fromEmail;
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
 
 
     @Override
     public String generateAndSendOtp(String email) {
 
-        String otpCode = String.format("%06d", new Random().nextInt(999999));
+        String otpCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
 
         EmailQueue otp = new EmailQueue();
         otp.setEmail(email);
@@ -52,14 +52,20 @@ public class EmailServiceImpl implements EmailService {
         otp.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         otp.setUsed(false);
         otp.setSubject(EmailTemplates.OTP_SUBJECT);
+
         emailRepo.save(otp);
-        otp.setId(otp.get_id());
+        otp.setId(otp.getObjectId());
         emailRepo.save(otp);
 
-        sendTemplatedEmail(email, EmailTemplates.OTP_SUBJECT, String.format(EmailTemplates.OTP_BODY_TEMPLATE, otpCode));
+        sendTemplatedEmail(
+                email,
+                EmailTemplates.OTP_SUBJECT,
+                String.format(EmailTemplates.OTP_BODY_TEMPLATE, otpCode)
+        );
 
         return otpCode;
     }
+
 
     private void sendTemplatedEmail(String to, String subject, String body) {
 
@@ -75,25 +81,18 @@ public class EmailServiceImpl implements EmailService {
 
             String jsonPayload = mapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
                 .header("Authorization", "Bearer " + resendApiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .build();
 
-            HttpResponse<String> response =
-                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 300) {
-                log.error("Resend API returned error for {}: {}", to, response.body());
-                throw new RuntimeException("Resend email failed: " + response.body());
-            }
             log.info("Email sent successfully to {} via Resend", to);
 
         } catch (Exception e) {
             log.error("Failed to send email to {}: ", to, e);
-            throw new RuntimeException("Failed to send email to " + to, e);
+            throw new InternalError("Failed to send email to " + to, e);
         }
     }
 
@@ -123,7 +122,7 @@ public class EmailServiceImpl implements EmailService {
                 emailRepo.delete(otp);
             }
         });
-        System.out.println("Expired OTPs cleaned up at " + LocalDateTime.now());
+        log.info("Expired OTPs cleaned up at " + LocalDateTime.now());
     }
 
 
@@ -136,7 +135,7 @@ public class EmailServiceImpl implements EmailService {
         emailQueue.setOtp(password);
         emailQueue.setSubject(EmailTemplates.USER_CREATION_SUBJECT);
         emailRepo.save(emailQueue);
-        emailQueue.setId(emailQueue.get_id());
+        emailQueue.setId(emailQueue.getObjectId());
         emailRepo.save(emailQueue);
 
         sendTemplatedEmail(
@@ -173,13 +172,14 @@ public class EmailServiceImpl implements EmailService {
 
         sendTemplatedEmail(
             email,
-            "Document Completed: " + (documentTitle != null ? documentTitle : DOCUMENT),
+            String.format(EmailTemplates.FINAL_DOCUMENT_SUBJECT, documentTitle != null ? documentTitle : DOCUMENT),
             String.format(
-                "Hello %s,\n\nThe document '%s' has been signed by all parties.\n\nView final document:\n%s\n\nThanks,\nDocuSign Clone Team",
+                EmailTemplates.FINAL_DOCUMENT_BODY_TEMPLATE,
                 userName != null ? userName : "User",
                 documentTitle != null ? documentTitle : DOCUMENT,
                 finalLink
             )
         );
     }
+
 }

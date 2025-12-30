@@ -14,11 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.docusign.entity.Designer;
+import com.docusign.exception.ResourceNotFoundException;
 import com.docusign.repository.DesignerRepo;
 import com.docusign.service.DesignerService;
 import com.docusign.service.DocumentCompletionService;
-import com.docusign.service.EmailService;
-import com.docusign.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,7 +77,7 @@ public class DesignerController {
     // 6) Send emails to selected users
    // @PostMapping("/{id}/send-emails")
     public ResponseEntity<Map<String, Object>> sendEmails(@PathVariable String id, @RequestBody Map<String, Object> body) {
-        Designer designer = designerRepo.findById(id).orElseThrow();
+        Designer designer = designerRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Designer not found with id: " + id));
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> users = (List<Map<String, Object>>) body.get("users");
@@ -86,12 +85,8 @@ public class DesignerController {
         if (users == null || users.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No users provided"));
         }
-
-        // Generate completion tokens and send emails
+        // Generate completion tokens and send email
         documentCompletionService.sendCompletionEmails(designer, users);
-        
-        // Update status
-        // designer.setStatus("sent");
         designerRepo.save(designer);
         
         return ResponseEntity.ok(Map.of("message", "Emails sent successfully", "sentTo", users.size()));

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Document(collection = "emails")
 public class EmailQueue extends BaseAuditEntity {
 	@Id
-    private ObjectId _id; 
+    private ObjectId objectId; 
     private String id;
     private String email;
     private String otp;
@@ -20,13 +20,13 @@ public class EmailQueue extends BaseAuditEntity {
     private boolean used;
     private String subject;
     
-    public void setId(ObjectId _id) {
-        this._id = _id;
-        this.id = (_id != null) ? _id.toHexString() : null;
+    public void setId(ObjectId objectId) {
+        this.objectId = objectId;
+        this.id = (objectId != null) ? objectId.toHexString() : null;
     }
     public String getId() {
-        if (this.id == null && this._id != null) {
-            this.id = this._id.toHexString();
+        if (this.id == null && this.objectId != null) {
+            this.id = this.objectId.toHexString();
         }
         return this.id;
     }

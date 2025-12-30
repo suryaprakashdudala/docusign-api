@@ -28,6 +28,7 @@ public class SecurityConfig {
     private String frontendUrl;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RequestLoggingFilter requestLoggingFilter;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -41,18 +42,29 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
-                .cors().and()
-                .csrf().disable()
-                .authorizeHttpRequests()
-                .requestMatchers("/api/auth/login", "/api/users/registerUser", "/api/auth/forgotpassword", "/api/auth/verifyotp", 
-                		"/api/auth/resetpassword", "/api/auth/updatepassword", "/api/documents/complete/**", "/api/auth/health").permitAll()
+            .cors(cors -> {})
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/users/registerUser",
+                    "/api/auth/forgotpassword",
+                    "/api/auth/verifyotp",
+                    "/api/auth/resetpassword",
+                    "/api/auth/updatepassword",
+                    "/api/documents/complete/**",
+                    "/api/auth/health"
+                ).permitAll()
                 .anyRequest().authenticated()
-                .and()
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            )
+            .addFilterBefore(requestLoggingFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
 
     @Bean

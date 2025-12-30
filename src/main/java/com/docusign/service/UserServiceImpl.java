@@ -7,6 +7,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.docusign.entity.User;
+import com.docusign.exception.ResourceNotFoundException;
 import com.docusign.repository.UserRepo;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(encoder.encode(plainPassword));
         user.setFirstTimeLogin(true);
         userRepo.save(user);
-        user.setId(user.get_id());
+        user.setId(user.getObjectId());
         userRepo.save(user);
         emailService.sendUserCreationMail(user, plainPassword);
         return user;
@@ -88,7 +89,7 @@ public class UserServiceImpl implements UserService {
             emailService.generateAndSendOtp(email);
             return user;
         } else {
-            throw new RuntimeException("User not found with email: " + email);
+            throw new ResourceNotFoundException("User not found with email: " + email);
         }
     }
 
@@ -101,7 +102,7 @@ public class UserServiceImpl implements UserService {
 	        userRepo.save(user);
 	        return true;
 	     } else {
-	    	 throw new RuntimeException("User not found with email: " + email);
+	    	 throw new ResourceNotFoundException("User not found with email: " + email);
 	     }
 	}
 
@@ -114,7 +115,7 @@ public class UserServiceImpl implements UserService {
 	       	user.setFirstTimeLogin(false);
 	        userRepo.save(user);
 	     } else {
-	    	 throw new RuntimeException("User not found with username: " + userName);
+	    	 throw new ResourceNotFoundException("User not found with username: " + userName);
 	     }
 	     return loUser;
 	}
