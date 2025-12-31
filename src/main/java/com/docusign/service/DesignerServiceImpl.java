@@ -40,12 +40,36 @@ public class DesignerServiceImpl implements DesignerService {
 
 	@Override
 	public Designer saveDesignerDocument(Map<String, String> body) {
+        String originalTitle = body.getOrDefault("title", AppConstants.DEFAULT_TITLE);
+        String uniqueTitle = generateUniqueTitle(originalTitle);
+
         Designer d = new Designer();
         d.setId(UUID.randomUUID().toString());
-        d.setTitle(body.getOrDefault("title", AppConstants.DEFAULT_TITLE));
+        d.setTitle(uniqueTitle);
         d.setStatus(AppConstants.STATUS_DRAFT);
         return designerRepo.save(d);
 	}
+
+    private String generateUniqueTitle(String title) {
+        if (!designerRepo.existsByTitle(title)) {
+            return title;
+        }
+
+        String baseTitle = title;
+        int counter = 1;
+
+        // If title already has a suffix like "Document (1)", use "Document" as base
+        if (title.matches(".*\\s\\(\\d+\\)$")) {
+            baseTitle = title.substring(0, title.lastIndexOf(" ("));
+        }
+
+        String newTitle;
+        do {
+            newTitle = String.format("%s (%d)", baseTitle, counter++);
+        } while (designerRepo.existsByTitle(newTitle));
+
+        return newTitle;
+    }
 
 
 	@Override
@@ -125,5 +149,61 @@ public class DesignerServiceImpl implements DesignerService {
 		return designer;
 	}
 
+
+	@Override
+	public Map<String, Object> bulkPublish(String id, List<Map<String, Object>> targetUsers) {
+		Designer template = designerRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException(MESSAGE + id));
+		
+		int count = 0;
+		for (Map<String, Object> userData : targetUsers) {
+			try {
+				Designer clone = new Designer();
+				clone.setId(UUID.randomUUID().toString());
+				
+				String userDisplayName = (String) userData.get("firstName");
+				if (userDisplayName == null || userDisplayName.isEmpty()) {
+					userDisplayName = (String) userData.get("userName");
+				}
+				
+				clone.setTitle(String.format("%s - %s", template.getTitle(), userDisplayName));
+				clone.setS3Key(template.getS3Key());
+				clone.setPages(template.getPages());
+				clone.setOwnerUserId(template.getOwnerUserId());
+				clone.setStatus(AppConstants.STATUS_PUBLISHED);
+				clone.setCreatedAt(java.time.Instant.now());
+				clone.setUpdatedAt(java.time.Instant.now());
+				
+				// Set this specific user as the recipient
+				clone.setRecipients(List.of(userData));
+				
+				// Clone fields and reassign to this user
+				String targetUserId = (String) userData.get("id");
+				if (targetUserId == null) {
+					targetUserId = (String) userData.get("userId");
+				}
+				
+				final String finalUserId = targetUserId;
+				List<Map<String, Object>> clonedFields = new java.util.ArrayList<>();
+				for (Map<String, Object> field : template.getFields()) {
+					Map<String, Object> newField = new java.util.HashMap<>(field);
+					newField.put("userId", finalUserId);
+					// Generate a new ID for the field to avoid internal React/DB confusion if any
+					newField.put("id", "field_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 5));
+					clonedFields.add(newField);
+				}
+				clone.setFields(clonedFields);
+				
+				designerRepo.save(clone);
+				
+				// Trigger email
+				documentCompletionService.sendCompletionEmails(clone, List.of(userData));
+				count++;
+			} catch (Exception e) {
+				log.error("Failed to clone document for user {}: ", userData.get("userName"), e);
+			}
+		}
+		
+		return Map.of("message", "Bulk publish completed", "clonedCount", count);
+	}
 	
 }

@@ -9,6 +9,7 @@ public class AppConstants {
     public static final String STATUS_DRAFT = "draft";
     public static final String STATUS_PUBLISHED = "published";
     public static final String STATUS_PENDING = "pending";
+    public static final String STATUS_TEMPLATE = "template";
 
     public static final String DEFAULT_TITLE = "Untitled";
     public static final String DEFAULT_DOCUMENT_TITLE = "Document";

@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EmailServiceImpl implements EmailService {
 
     private final EmailRepo emailRepo;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     private static final String DOCUMENT = "Document";
 
@@ -81,14 +82,21 @@ public class EmailServiceImpl implements EmailService {
 
             String jsonPayload = mapper.writeValueAsString(payload);
 
-            HttpRequest.newBuilder()
+            HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
                 .header("Authorization", "Bearer " + resendApiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .build();
 
-            log.info("Email sent successfully to {} via Resend", to);
+            var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("Email sent successfully to {} via Resend. Status: {}", to, response.statusCode());
+            } else {
+                log.error("Failed to send email to {}. Status: {}, Response: {}", to, response.statusCode(), response.body());
+                throw new InternalError("Resend API returned error: " + response.statusCode());
+            }
 
         } catch (Exception e) {
             log.error("Failed to send email to {}: ", to, e);

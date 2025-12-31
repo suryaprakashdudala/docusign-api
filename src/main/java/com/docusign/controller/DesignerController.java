@@ -79,7 +79,6 @@ public class DesignerController {
     public ResponseEntity<Map<String, Object>> sendEmails(@PathVariable String id, @RequestBody Map<String, Object> body) {
         Designer designer = designerRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Designer not found with id: " + id));
         
-        @SuppressWarnings("unchecked")
         List<Map<String, Object>> users = (List<Map<String, Object>>) body.get("users");
         
         if (users == null || users.isEmpty()) {
@@ -119,5 +118,15 @@ public class DesignerController {
     public ResponseEntity<Designer> publishDesigner(@PathVariable String id) {
         Designer designer = designerService.publishDesigner(id);
         return ResponseEntity.ok(designer);
+    }
+
+    @PostMapping("/{id}/bulk-publish")
+    public ResponseEntity<Map<String, Object>> bulkPublish(@PathVariable String id, @RequestBody Map<String, Object> body) {
+        List<Map<String, Object>> targetUsers = (List<Map<String, Object>>) body.get("users");
+        if (targetUsers == null || targetUsers.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No target users provided"));
+        }
+        Map<String, Object> result = designerService.bulkPublish(id, targetUsers);
+        return ResponseEntity.ok(result);
     }
 }

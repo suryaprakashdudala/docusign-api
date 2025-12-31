@@ -26,6 +26,8 @@ public interface DesignerService {
 	public Map<String, String> getViewUrl(String id) throws NotFoundException;
 	
 	public Designer publishDesigner(String id);
+
+	public Map<String, Object> bulkPublish(String id, List<Map<String, Object>> targetUsers);
 	
 	
 }
