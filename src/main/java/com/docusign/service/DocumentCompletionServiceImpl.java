@@ -60,7 +60,7 @@ public class DocumentCompletionServiceImpl implements DocumentCompletionService 
     
     private UserEmailContext buildUserContext(Map<String, Object> user) {
 
-        String userId = (String) user.get("userId");
+        String userId = (String) user.get("id");
         String email = (String) user.get("email");
         String firstName = (String) user.get("firstName");
         String lastName = (String) user.get("lastName");

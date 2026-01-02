@@ -34,5 +34,7 @@ public class Designer extends BaseAuditEntity {
     
     @Default
     private String status = "draft";
+    @Default
+    private String type = "Document";
 
 }

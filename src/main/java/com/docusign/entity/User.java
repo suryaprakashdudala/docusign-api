@@ -6,6 +6,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,7 +29,11 @@ public class User extends BaseAuditEntity {
     private List<String> roles;
     private String id;
     private String email;
+    
+    @JsonProperty("isFirstTimeLogin")
     private boolean isFirstTimeLogin;
+    
+    @JsonProperty("isExternal")
     private boolean isExternal;
 
     public void setId(ObjectId objectId) {

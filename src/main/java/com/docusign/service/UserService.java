@@ -1,5 +1,6 @@
 package com.docusign.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -18,4 +19,6 @@ public interface UserService {
 	public boolean resetPassword(String email, String password);
 
 	public Optional<User> updatePassword(String email, String password);
+
+	public List<User> findAll();
 }

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.docusign.entity.User;
-import com.docusign.repository.UserRepo;
 import com.docusign.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -20,12 +19,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserRepo userRepo;
     private final UserService userService;
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userRepo.findAll();
+        List<User> users = userService.findAll();
         return ResponseEntity.ok(users);
     }
     

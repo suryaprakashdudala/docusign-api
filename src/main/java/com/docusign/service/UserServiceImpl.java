@@ -1,6 +1,7 @@
 package com.docusign.service;
 
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -118,6 +119,11 @@ public class UserServiceImpl implements UserService {
 	    	 throw new ResourceNotFoundException("User not found with username: " + userName);
 	     }
 	     return loUser;
+	}
+
+	@Override
+	public List<User> findAll() {
+		return userRepo.findAll();
 	}
 
 }

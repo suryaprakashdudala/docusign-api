@@ -47,6 +47,7 @@ public class DesignerServiceImpl implements DesignerService {
         d.setId(UUID.randomUUID().toString());
         d.setTitle(uniqueTitle);
         d.setStatus(AppConstants.STATUS_DRAFT);
+        d.setType("Document");
         return designerRepo.save(d);
 	}
 
@@ -99,6 +100,9 @@ public class DesignerServiceImpl implements DesignerService {
 	        if (designer.getStatus() != null) {
 	        	document.setStatus(designer.getStatus());
 	        }
+	        if (designer.getType() != null) {
+	        	document.setType(designer.getType());
+	        }
 	        
 	        designerRepo.save(document);
 	        return document;
@@ -116,6 +120,7 @@ public class DesignerServiceImpl implements DesignerService {
         response.put("recipients", designer.getRecipients() != null ? designer.getRecipients() : List.of());
         response.put("fields", designer.getFields() != null ? designer.getFields() : List.of());
         response.put("status", designer.getStatus() != null ? designer.getStatus() : AppConstants.STATUS_DRAFT);
+        response.put("type", designer.getType() != null ? designer.getType() : "Document");
         
         // Add view URL if document exists
         if (designer.getS3Key() != null && !designer.getS3Key().isEmpty()) {
@@ -170,6 +175,7 @@ public class DesignerServiceImpl implements DesignerService {
 				clone.setPages(template.getPages());
 				clone.setOwnerUserId(template.getOwnerUserId());
 				clone.setStatus(AppConstants.STATUS_PUBLISHED);
+				clone.setType("Document");
 				clone.setCreatedAt(java.time.Instant.now());
 				clone.setUpdatedAt(java.time.Instant.now());
 				
