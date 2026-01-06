@@ -34,7 +34,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return new org.springframework.security.core.userdetails.User(
                     user.get().getUserName(),
                     user.get().getPassword(),
-                    getAuthorities(user.get().getRoles())
+                    getAuthorities(user.get().getRole())
             );
         }
         
@@ -63,12 +63,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     }
 
-    private Collection<? extends GrantedAuthority> getAuthorities(List<String> roles) {
+    private Collection<? extends GrantedAuthority> getAuthorities(String role) {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        if (roles != null) {
-            for (String role : roles) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-            }
+        if (role != null && !role.isEmpty()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
         }
         return authorities;
     }

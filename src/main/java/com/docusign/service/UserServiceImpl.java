@@ -140,7 +140,7 @@ public class UserServiceImpl implements UserService {
         existingUser.setFirstName(user.getFirstName());
         existingUser.setLastName(user.getLastName());
         existingUser.setEmail(user.getEmail());
-        existingUser.setRoles(user.getRoles());
+        existingUser.setRole(user.getRole());
         existingUser.setExternal(user.isExternal());
 
         return userRepo.save(existingUser);

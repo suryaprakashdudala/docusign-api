@@ -3,7 +3,6 @@ package com.docusign.security;
 import java.security.Key;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,9 +30,9 @@ public class JwtService {
           .setAudience("secure-app")
           .setSubject(user.getUserName())
           .setExpiration(Date.from(Instant.ofEpochMilli(System.currentTimeMillis()+(1000 * 60 * 60))))
-          .claim("userRoles",user.getRoles())
+          .claim("userRoles",user.getRole())
           .claim("userName",user.getUserName())
-          .claim("adminAccessEntities", user.getRoles())
+          .claim("adminAccessEntities", user.getRole())
           .claim("id",user.getId()).compact();
     }
 
@@ -76,9 +75,9 @@ public class JwtService {
           .setAudience("secure-app")
           .setSubject(email)
           .setExpiration(Date.from(Instant.ofEpochMilli(System.currentTimeMillis()+(1000 * 60 * 60))))
-          .claim("userRoles",List.of("Viewer"))
+          .claim("userRoles","Viewer")
           .claim("userName",email)
-          .claim("adminAccessEntities", List.of("Viewer"))
+          .claim("adminAccessEntities", "Viewer")
           .claim("docToken", docToken)
           .claim("id",email).compact();
     }

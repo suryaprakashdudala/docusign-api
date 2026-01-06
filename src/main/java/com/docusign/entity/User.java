@@ -1,13 +1,12 @@
 package com.docusign.entity;
 
-import java.util.List;
-
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,7 +27,7 @@ public class User extends BaseAuditEntity {
     private String password;
     private String firstName;
     private String lastName;
-    private List<String> roles;
+    private String role;
     private String id;
     private String email;
     
