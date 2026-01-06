@@ -18,7 +18,6 @@ public interface DocumentCompletionService {
 
     Map<String, Object> getDocumentForCompletion(String token);
 
-    // existing methods
     void sendCompletionEmails(Designer designer, List<Map<String, Object>> users);
     DocumentCompletion getCompletionByToken(String token);
     Map<String, Object> getConsolidatedValues(String designerId);

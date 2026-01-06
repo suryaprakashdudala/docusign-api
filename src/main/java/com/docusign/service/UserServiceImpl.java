@@ -84,26 +84,26 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Optional<User> forgotPassword(String email) {
-        Optional<User> user = userRepo.findByEmail(email);
+    public Optional<User> forgotPassword(String userName) {
+        Optional<User> user = userRepo.findByUserName(userName);
         if (user.isPresent()) {
-            emailService.generateAndSendOtp(email);
+            emailService.generateAndSendOtp(user.get().getEmail());
             return user;
         } else {
-            throw new ResourceNotFoundException("User not found with email: " + email);
+            throw new ResourceNotFoundException("User not found with username: " + userName);
         }
     }
 
 	@Override
-	public boolean resetPassword(String email, String password) {
-		 Optional<User> loUser = userRepo.findByEmail(email);
+	public boolean resetPassword(String userName, String password) {
+		 Optional<User> loUser = userRepo.findByUserName(userName);
 	     if (loUser.isPresent()) {
 	        User user = loUser.get();
 	       	user.setPassword(encoder.encode(password));
 	        userRepo.save(user);
 	        return true;
 	     } else {
-	    	 throw new ResourceNotFoundException("User not found with email: " + email);
+	    	 throw new ResourceNotFoundException("User not found with username: " + userName);
 	     }
 	}
 
@@ -126,4 +126,28 @@ public class UserServiceImpl implements UserService {
 		return userRepo.findAll();
 	}
 
+    @Override
+    public User update(String id, User user) {
+        User existingUser = userRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        if (!existingUser.getUserName().equals(user.getUserName())) {
+            log.warn("Attempt to change username for user id {}. Original: {}, Attempted: {}", 
+                id, existingUser.getUserName(), user.getUserName());
+            throw new IllegalArgumentException("Username cannot be modified");
+        }
+
+        existingUser.setFirstName(user.getFirstName());
+        existingUser.setLastName(user.getLastName());
+        existingUser.setEmail(user.getEmail());
+        existingUser.setRoles(user.getRoles());
+        existingUser.setExternal(user.isExternal());
+
+        return userRepo.save(existingUser);
+    }
+
+    @Override
+    public Optional<User> findByUserName(String userName) {
+        return userRepo.findByUserName(userName);
+    }
 }

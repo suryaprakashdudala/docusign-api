@@ -25,6 +25,7 @@ public class DesignerServiceImpl implements DesignerService {
     private final DocumentCompletionService documentCompletionService;
 	
 	private static final String MESSAGE = "Designer not found with id: ";
+	private static final String DOCUMENT = "Document";
 	
 	@Override
 	public List<Designer> findAll() {
@@ -47,7 +48,7 @@ public class DesignerServiceImpl implements DesignerService {
         d.setId(UUID.randomUUID().toString());
         d.setTitle(uniqueTitle);
         d.setStatus(AppConstants.STATUS_DRAFT);
-        d.setType("Document");
+        d.setType(DOCUMENT);
         return designerRepo.save(d);
 	}
 
@@ -59,7 +60,6 @@ public class DesignerServiceImpl implements DesignerService {
         String baseTitle = title;
         int counter = 1;
 
-        // If title already has a suffix like "Document (1)", use "Document" as base
         if (title.matches(".*\\s\\(\\d+\\)$")) {
             baseTitle = title.substring(0, title.lastIndexOf(" ("));
         }
@@ -120,9 +120,8 @@ public class DesignerServiceImpl implements DesignerService {
         response.put("recipients", designer.getRecipients() != null ? designer.getRecipients() : List.of());
         response.put("fields", designer.getFields() != null ? designer.getFields() : List.of());
         response.put("status", designer.getStatus() != null ? designer.getStatus() : AppConstants.STATUS_DRAFT);
-        response.put("type", designer.getType() != null ? designer.getType() : "Document");
+        response.put("type", designer.getType() != null ? designer.getType() : DOCUMENT);
         
-        // Add view URL if document exists
         if (designer.getS3Key() != null && !designer.getS3Key().isEmpty()) {
             String viewUrl = s3Service.generatePresignedGetUrl(designer.getS3Key());
             response.put("viewUrl", viewUrl);
@@ -175,7 +174,7 @@ public class DesignerServiceImpl implements DesignerService {
 				clone.setPages(template.getPages());
 				clone.setOwnerUserId(template.getOwnerUserId());
 				clone.setStatus(AppConstants.STATUS_PUBLISHED);
-				clone.setType("Document");
+				clone.setType(DOCUMENT);
 				clone.setCreatedAt(java.time.Instant.now());
 				clone.setUpdatedAt(java.time.Instant.now());
 				
@@ -193,7 +192,6 @@ public class DesignerServiceImpl implements DesignerService {
 				for (Map<String, Object> field : template.getFields()) {
 					Map<String, Object> newField = new java.util.HashMap<>(field);
 					newField.put("userId", finalUserId);
-					// Generate a new ID for the field to avoid internal React/DB confusion if any
 					newField.put("id", "field_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 5));
 					clonedFields.add(newField);
 				}
@@ -201,7 +199,6 @@ public class DesignerServiceImpl implements DesignerService {
 				
 				designerRepo.save(clone);
 				
-				// Trigger email
 				documentCompletionService.sendCompletionEmails(clone, List.of(userData));
 				count++;
 			} catch (Exception e) {

@@ -12,15 +12,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.docusign.entity.User;
+import com.docusign.exception.ResourceNotFoundException;
 import com.docusign.security.JwtService;
 import com.docusign.service.EmailService;
 import com.docusign.service.UserService;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/auth")
 @Slf4j
+@RequiredArgsConstructor
 public class AuthController {
 
 
@@ -34,11 +37,6 @@ public class AuthController {
     private static final String EMAIL = "email";
     private static final String STATUS = "status";
 
-    public AuthController(UserService userService, JwtService jwtService, EmailService emailService) {
-        this.userService = userService;
-        this.jwtService = jwtService;
-        this.emailService = emailService;
-    }
     
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
@@ -60,17 +58,20 @@ public class AuthController {
     
     @PostMapping("/forgotpassword")
     public ResponseEntity<Object> forgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get(EMAIL);
-        userService.forgotPassword(email);
-        return ResponseEntity.ok("OTP sent to " + email);
+        String userName = request.get(USER_NAME);
+        userService.forgotPassword(userName);
+        return ResponseEntity.ok("OTP sent to your registered email");
     }
 
     @PostMapping("/verifyotp")
     public ResponseEntity<Object> verifyOtp(@RequestBody Map<String, String> request) {
-        String email = request.get(EMAIL);
+        String userName = request.get(USER_NAME);
         String otp = request.get("otp");
 
-        boolean verified = emailService.verifyOtp(email, otp);
+        User user = userService.findByUserName(userName)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + userName));
+
+        boolean verified = emailService.verifyOtp(user.getEmail(), otp);
 
         if (verified) {
             return ResponseEntity.ok(Map.of(
@@ -87,10 +88,10 @@ public class AuthController {
 
     @PostMapping("/resetpassword")
     public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> request) {
-        String email = request.get(EMAIL);
+        String userName = request.get(USER_NAME);
         String password = request.get(PASSWORD);
 
-        boolean verified = userService.resetPassword(email, password);
+        boolean verified = userService.resetPassword(userName, password);
 
         if (verified) {
             return ResponseEntity.ok(Map.of(

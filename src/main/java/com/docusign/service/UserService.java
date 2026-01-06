@@ -14,11 +14,15 @@ public interface UserService {
 
     public Optional<User> validateUser(String userName, String password);
     
-    public Optional<User> forgotPassword(String email);
+    public Optional<User> forgotPassword(String userName);
 
-	public boolean resetPassword(String email, String password);
+	public boolean resetPassword(String userName, String password);
 
-	public Optional<User> updatePassword(String email, String password);
+	public Optional<User> updatePassword(String userName, String password);
 
 	public List<User> findAll();
+
+    public User update(String id, User user);
+
+    public Optional<User> findByUserName(String userName);
 }
