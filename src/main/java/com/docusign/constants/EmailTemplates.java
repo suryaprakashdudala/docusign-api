@@ -18,7 +18,7 @@ public class EmailTemplates {
         Please do not share this code with anyone for security reasons.
 
         Thank you,
-        DocuSign System
+        Document Signing Platform
         """;
 
 
@@ -36,7 +36,7 @@ public class EmailTemplates {
         Please log in and change your password.
 
         Thank you,
-        DocuSign System
+        Document Signing Platform
         """;
 
     // DOCUMENT COMPLETION EMAIL
@@ -53,7 +53,7 @@ public class EmailTemplates {
         This link is unique to you and will expire in 7 days.
 
         Thank you,
-        DocuSign System
+        Document Signing Platform
         """;
 
     // FINAL DOCUMENT EMAIL
@@ -68,6 +68,6 @@ public class EmailTemplates {
         %s
 
         Thanks,
-        DocuSign Clone Team
+        Document Signing Platform
         """;
 }
