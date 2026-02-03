@@ -28,12 +28,12 @@ public class EmailTemplates {
     public static final String USER_CREATION_BODY_TEMPLATE = """
         Hello %s,
 
-        Your account has been successfully created in the Audit System.
+        Your account has been successfully created.
 
         Username: %s
         Temporary Password: %s
 
-        Please log in and change your password immediately for security reasons.
+        Please log in and change your password.
 
         Thank you,
         DocuSign System
