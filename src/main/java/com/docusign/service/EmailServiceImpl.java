@@ -68,40 +68,61 @@ public class EmailServiceImpl implements EmailService {
     }
 
 
+    private static final int MAX_RETRIES = 3;
+
     private void sendTemplatedEmail(String to, String subject, String body) {
+        ObjectMapper mapper = new ObjectMapper();
+        int attempt = 0;
+        Exception lastException = null;
 
-        try {
-            ObjectMapper mapper = new ObjectMapper();
+        while (attempt < MAX_RETRIES) {
+            try {
+                attempt++;
+                Map<String, Object> payload = Map.of(
+                  "from", fromEmail,
+                  "to", List.of(to),
+                  "subject", subject,
+                  "text", body
+                );
 
-            Map<String, Object> payload = Map.of(
-              "from", fromEmail,
-              "to", List.of(to),
-              "subject", subject,
-              "text", body
-            );
+                String jsonPayload = mapper.writeValueAsString(payload);
 
-            String jsonPayload = mapper.writeValueAsString(payload);
+                HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.resend.com/emails"))
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
 
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.resend.com/emails"))
-                .header("Authorization", "Bearer " + resendApiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
-                .build();
+                var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
 
-            var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    log.info("Email sent successfully to {} via Resend. Status: {}", to, response.statusCode());
+                    return;
+                } else {
+                    String errorMessage = String.format("Resend API returned error: %d, Body: %s", response.statusCode(), response.body());
+                    log.error("Failed to send email to {}. {}", to, errorMessage);
+                    throw new InternalError(errorMessage);
+                }
 
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.info("Email sent successfully to {} via Resend. Status: {}", to, response.statusCode());
-            } else {
-                log.error("Failed to send email to {}. Status: {}, Response: {}", to, response.statusCode(), response.body());
-                throw new InternalError("Resend API returned error: " + response.statusCode());
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("Attempt {}/{} failed to send email to {}: {}", attempt, MAX_RETRIES, to, e.getMessage());
+
+                if (attempt < MAX_RETRIES) {
+                    try {
+                        long backoffMillis = (long) Math.pow(2, attempt - 1) * 1000;
+                        Thread.sleep(backoffMillis);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new InternalError("Interrupted during email retry", ie);
+                    }
+                }
             }
-
-        } catch (Exception e) {
-            log.error("Failed to send email to {}: ", to, e);
-            throw new InternalError("Failed to send email to " + to, e);
         }
+
+        log.error("Failed to send email to {} after {} attempts", to, MAX_RETRIES, lastException);
+        throw new InternalError("Failed to send email to " + to, lastException);
     }
 
     @Override
